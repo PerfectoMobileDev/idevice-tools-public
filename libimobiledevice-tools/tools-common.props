@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ImportGroup Label="PropertySheets" />
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup />
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(SolutionDir)\libzip;$(SolutionDir)\libimobiledevice\include;$(SolutionDir)\vendors\include;$(SolutionDir)\libplist\include;$(SolutionDir)\getopt;$(SolutionDir)\libgen;$(SolutionDir)\vendors\socket\include</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_WIN32_WINNT=0x0501;WINVER=0x0501;WIN32;_CONSOLE;HAVE_LIBIMOBILEDEVICE_1_1;ZIP_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <CompileAs>CompileAsCpp</CompileAs>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>$(SolutionDir)\$(Configuration);$(SolutionDir)\vendors\socket\lib;$(SolutionDir)\vendors\libxml2\lib;$(SolutionDir)\vendors\openssl\lib;$(SolutionDir)\vendors\iconv\lib;$(SolutionDir)\vendors\zlib\lib</AdditionalLibraryDirectories>
+      <AdditionalDependencies>libgen.lib;getopt.lib;libxml2.lib;libcnary.lib;libplist.lib;ws2_32.lib;libusbmuxd.lib;socket.lib;libeay32.lib;ssleay32.lib;libimobiledevice.lib;iconv.lib;libzip.lib;zlib.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup />
+</Project>

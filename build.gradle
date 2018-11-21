@@ -1,0 +1,214 @@
+import static org.apache.tools.ant.taskdefs.condition.Os.*
+
+task createBranch{
+    outputs.upToDateWhen { false }
+    doLast{
+        def branchName = "idevice-tools-$version"
+        def tagName = "deploy-$version"
+        def versionName= "V$version"
+        println "Going to create branch $branchName"
+
+        // change version property
+        println "saving version to properties file"
+        Properties props = loadProperties()
+        props.setProperty('version', versionName)
+
+        saveProperties(props)
+
+        // create branch
+        println "Creating the branch"
+        executeCommandLine("git checkout -b $branchName")
+
+        println "Pushing gradle.properties file"
+        executeCommandLine("git add gradle.properties")
+        executeCommandLine(["git","commit","-m","prepare branch $branchName"])
+        executeCommandLine("git push -u origin $branchName")
+
+        // add tag to branch
+        println "Tagging the last commit with $tagName"
+        def lastCommit = executeCommandLine("git rev-parse HEAD").text
+        executeCommandLine("git tag $tagName $lastCommit")
+        executeCommandLine("git push -u origin $tagName")
+    }
+}
+
+task buildProj(type:Exec){
+    def hss_version = version
+    if (version == 'master-SNAPSHOT') {
+        def timestemp = getTimestamp()
+        hss_version = "master-${timestemp}";
+    }
+	if(isLinux()){
+		println "About to build solution for linux"
+		commandLine "./linux_build.sh", "${hss_version}"
+	}
+	else{
+		println "About to build solution for windows"
+		commandLine "win_build.bat", "${hss_version}"
+	}
+}
+
+task cleanProj(type:Exec){
+	if(isLinux()){
+		println "About to clean solution for linux"
+		commandLine 'make', 'clean'
+	}
+	else{
+		println "About to clean solution for windows"
+		commandLine 'cmd', '/c', '\"C:\\Program Files (x86)\\Microsoft Visual Studio 12.0\\Common7\\IDE\\devenv.com\" libimobiledevice-win32.sln /clean release' 
+	}
+}
+
+apply plugin: 'distribution'
+
+distributions {
+	doFirst{
+    placeExecsFiles()
+    placeDebugFiles() 
+  }
+	linux {
+		if(version=='master-SNAPSHOT'){
+			def timestemp = getTimestamp()
+			baseName = "${baseName}-${timestemp}";
+		}
+		contents {
+			from { 'idevice' }
+		}
+	}
+  
+  win {
+    if(version=='master-SNAPSHOT'){
+			def timestemp = getTimestamp()
+			baseName = "${baseName}-${timestemp}";
+		}
+    contents {
+			from { 'idevice' }
+		}
+  }
+}
+
+task pack{
+	if(isLinux()){
+    	dependsOn 'linuxDistZip'
+  	}
+  	else{
+    	dependsOn 'winDistZip'
+  	}
+  	doLast{
+    	delete 'idevice'
+  	}
+}
+
+def placeExecsFiles() {
+  def release = "Release\\"
+  def idevice = "idevice"
+  project.file(idevice).mkdirs()
+  FileCollection execs = null
+  if(isLinux()){
+    release = "Release//"
+    execs = files("${release}idevicediagnostics",
+					"${release}idevicesyslog",
+					"${release}idevice_id",
+ 					"${release}idevice_installer_server",
+					"${release}ideviceinstruments",
+					"${release}ideviceimagemounter",
+					"${release}ideviceprovision",
+					"${release}idevicescreenshot",
+					"${release}ideviceVitals",
+					"${release}ideviceinfo",
+					"${release}ideviceprocess",
+					"${release}idevice_xctest_runner",
+					"${release}idevice_file_transfer",
+          "${release}idevice_accessibility_inspector",
+          "${release}idevice_xctrunner",
+          "${release}idevicesimulatelocation",
+          "${release}ios-webkit-debug-proxy")
+  }
+  else{
+    execs = files("${release}ideviceapp.exe",
+                  "${release}idevicediagnostics.exe",
+                  "${release}ideviceimagemounter.exe",
+                  "${release}ideviceinfo.exe",
+                  "${release}ideviceinstruments.exe",
+                  "${release}idevicelaunchapp.exe",
+                  "${release}ideviceprovision.exe",
+                  "${release}idevicescreenshot.exe",
+                  "${release}idevicesimulatelocation.exe",
+                  "${release}idevicesyslog.exe",
+                  "${release}ideviceVitals.exe",
+                  "${release}idevice_file_transfer.exe",
+                  "${release}idevice_id.exe",
+                  "${release}idevice_installer_server.exe",
+                  "${release}idevice_xctest_runner.exe",
+                  "${release}idevice_xctrunner.exe",
+                  "${release}ios-webkit-debug-proxy.exe",
+                  "${release}idevice_accessibility_inspector.exe",
+                  "${release}idevicecrashreport.exe",
+		"${release}IosDeviceBridge.dll",
+	   "${release}SetEnvironment.dll",
+	   "${release}socket.dll",
+	   "${release}libcnary.dll",
+	   "${release}libplist.dll",
+	   "${release}libzip.dll",
+	   "${release}libusbmuxd.dll",
+	   "${release}libimobiledevice.dll")
+  }
+                                
+  copy {
+    from release
+    into idevice
+    execs.each {File file ->
+      include file.name
+    }
+  }
+}
+
+def placeDebugFiles() {
+  if(!isLinux()){
+    def release = "Release\\"
+    def forDebug = "idevice\\forDebug"
+    project.file(forDebug).mkdirs()
+  
+    FileCollection pdbs = files("${release}idevice_installer_server.pdb",
+                                "${release}idevice_xctest_runner.pdb",
+                                "${release}idevice_xctrunner.pdb",
+                                "${release}ideviceinstruments.pdb",
+                                "${release}idevicesyslog.pdb")
+    copy {
+      from release
+      into forDebug
+      pdbs.each {File file ->
+        include file.name
+      }
+    }  
+  }
+}
+
+def getTimestamp() {
+    def date = new Date()
+    return date.format('yyyy-MM-dd_HH-mm-ss')
+}
+
+def executeCommandLine(cmd){
+    Process proc = cmd.execute()
+    proc.waitFor()
+    return proc
+}
+
+def loadProperties(){
+    Properties props = new Properties()
+    File propsFile = new File('gradle.properties')
+    props.load(propsFile.newDataInputStream())
+    return props;
+}
+
+def saveProperties(newProperties){
+    File propsFile = new File('gradle.properties')
+    newProperties.store(propsFile.newWriter(), null)
+}
+
+def isLinux(){
+	def linux = "linux"
+	def current = "${OS_NAME}"
+	return (linux==current)
+}
